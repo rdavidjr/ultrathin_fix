@@ -4,12 +4,13 @@ Reversible Linux fixes for the **MacBook8,1** (2015 12" Retina / Ultrathin).
 
 Tested on Ubuntu. The same hardware issues also show up on Fedora and other distros.
 
-There are two independent installers:
+Independent installers:
 
 | Script | What it targets |
 |--------|-----------------|
 | `install.sh` | SPI keyboard / trackpad after lid suspend |
-| `install-display.sh` | IPS image retention (ghost letters on screen) |
+| `install-speakers.sh` | Built-in speakers (CS4208 TDM) |
+| `install-display.sh` | IPS image retention (optional; see warning) |
 
 ---
 
@@ -71,7 +72,59 @@ sudo reboot
 
 ---
 
-## Display remanence (ghost letters)
+## Speakers (built-in)
+
+### Problem
+
+The Apple boot chime works, and Linux detects the Cirrus **CS4208**, but the built-in speakers stay silent. This is **not** a mute/mixer issue.
+
+EFI brings up a working **4-channel TDM** path into the class-D amp. Stock `snd-hda-intel` / `snd-hda-codec-cs420x` reset that fragile clock state on bring-up and break speaker output.
+
+### What `install-speakers.sh` installs
+
+A thin wrapper around [thomas-shirley/macbook8.1-speaker-driver](https://github.com/thomas-shirley/macbook8.1-speaker-driver) at a pinned commit (`fe54ad1aa7d8448fc49c0b5c8b353c50e2b1b8a1`):
+
+- DKMS-patched `snd-hda-intel`, `snd-hda-codec-cs420x`, `snd-hda-codec-generic`
+- `/etc/modprobe.d/mb81-singlecmd.conf`
+- PipeWire / WirePlumber speaker routing for the installing user
+- Resume recover + jack-switch helpers from upstream
+
+Backups: `/var/backups/macbook8.1-speakers-<timestamp>/`. Does **not** change the SPI/s2idle fix.
+
+### Install
+
+```bash
+cd ultrathin_fix
+sudo bash install-speakers.sh
+sudo reboot
+```
+
+Needs network on first install (clones upstream + may fetch kernel source for the DKMS build).
+
+### Verify (after reboot)
+
+```bash
+wpctl status | grep -i speaker
+dmesg | grep -i 'without reset'
+speaker-test -c2 -t sine -f 440 -D pipewire
+```
+
+Upstream headphone jack switching is still imperfect. After suspend, if audio is silent, upstream provides `sudo mb81-resume-recover` (complements s2idle; does not replace it).
+
+### Revert
+
+```bash
+sudo bash revert-speakers.sh
+sudo reboot
+```
+
+---
+
+## Display remanence (ghost letters) — optional
+
+### Warning
+
+An earlier brightness soft-cap that **re-applied in a loop** caused screen blinking on this machine. Prefer **manual** brightness reduction and occasional `panel-clear` only if you still want these helpers. Do not reinstall the looping brightness service variant.
 
 ### Diagnosis
 
@@ -80,69 +133,30 @@ If dark/black areas look mostly fine but you still see faint leftover letters or
 1. Take a **screenshot** of the affected area.
 2. If the ghosts are **not** in the screenshot, the framebuffer is correct. This is **LCD IPS image retention** (panel liquid-crystal lag), common on aging MacBook Retina panels — not a compositor bug.
 
-Software cannot fully cure a worn panel. Mitigations reduce how strongly it shows and can temporarily clear residual charge.
+Software cannot fully cure a worn panel.
 
-**Do not** expect `i915.enable_psr=0` or `i915.enable_fbc=0` to fix this when screenshots are clean; those only affect the scanout path, not the panel itself, and they cost battery for no gain here.
+**Do not** expect `i915.enable_psr=0` or `i915.enable_fbc=0` to fix this when screenshots are clean.
 
-### What helps
-
-- Keep brightness lower (high backlight makes retention worse).
-- Avoid leaving bright static UI on screen for long stretches before switching to a dark background.
-- Run an occasional full-screen white clear to discharge residual image.
-
-### What `install-display.sh` installs
-
-| Change | Purpose |
-|--------|---------|
-| Soft brightness cap (default **70%**) | udev + oneshot service caps backlight (re-applies after login so GNOME cannot keep 100%) |
-| `panel-clear` | Manual fullscreen white (then short black) to clear retention temporarily |
-
-Backups: `/var/backups/macbook8.1-display-<timestamp>/`. Does **not** change GRUB or the SPI fix.
-
-### Install
+### Install / revert (optional)
 
 ```bash
-cd ultrathin_fix
 sudo bash install-display.sh
-```
-
-Adjust the cap:
-
-```bash
-sudoedit /etc/macbook8.1-display/brightness-cap.conf
-# BRIGHTNESS_CAP_PERCENT=50
-sudo /usr/local/sbin/macbook-brightness-cap.sh
-```
-
-Clear the panel when ghosts build up (user session, no sudo):
-
-```bash
-panel-clear                 # ~5 min white, then ~30 s black
-panel-clear --minutes 10
-# Esc or q quits early
-```
-
-Needs `python3-gi` and GTK 3 (`gir1.2-gtk-3.0`), which Ubuntu desktop already has.
-
-### Revert
-
-```bash
+# …
 sudo bash revert-display.sh
 ```
+
+`panel-clear` (after install): fullscreen white then black to temporarily clear retention.
 
 ---
 
 ## Layout
 
 ```
-install.sh / revert.sh                 # SPI / s2idle
-install-display.sh / revert-display.sh # remanence mitigations
+install.sh / revert.sh                     # SPI / s2idle
+install-speakers.sh / revert-speakers.sh   # CS4208 speakers (wraps upstream DKMS)
+install-display.sh / revert-display.sh     # remanence helpers (optional)
 bin/applespi-boot-retry.sh
 bin/macbook-brightness-cap.sh
 bin/panel-clear.py
-systemd/applespi-boot-retry.service
-systemd/10-macbook8.1-s2idle.conf
-systemd/macbook-brightness-cap.service
-systemd/90-macbook-brightness-cap.rules
-systemd/brightness-cap.conf
+systemd/…
 ```
