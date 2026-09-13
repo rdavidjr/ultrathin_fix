@@ -1,0 +1,2 @@
+# Cap backlight when a backlight device appears (boot / resume).
+ACTION=="add|change", SUBSYSTEM=="backlight", RUN+="/usr/local/sbin/macbook-brightness-cap.sh"

@@ -1,0 +1,13 @@
+[Unit]
+Description=Cap MacBook backlight to reduce IPS image retention
+Documentation=https://github.com/rdavidjr/ultrathin_fix
+After=multi-user.target
+ConditionVirtualization=!container
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/macbook-brightness-cap.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
