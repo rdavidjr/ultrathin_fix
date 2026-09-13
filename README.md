@@ -10,6 +10,7 @@ Independent installers:
 |--------|-----------------|
 | `install.sh` | SPI keyboard / trackpad after lid suspend |
 | `install-speakers.sh` | Built-in speakers (CS4208 TDM) |
+| `install-keyboard.sh` | macOS-like Command / Option / Control |
 | `install-display.sh` | IPS image retention (optional; see warning) |
 
 ---
@@ -120,6 +121,52 @@ sudo reboot
 
 ---
 
+## Keyboard (macOS modifiers)
+
+### Problem
+
+The MacBook’s physical **Command / Option / Control** row does not match Linux defaults. Linux apps expect **Ctrl** for copy/paste and most shortcuts, while muscle memory from macOS uses **⌘ Command**.
+
+`hid_apple` modprobe options do **not** apply here: the built-in keyboard is driven by **applespi**, not USB `hid_apple`.
+
+### What `install-keyboard.sh` installs
+
+| Change | Purpose |
+|--------|---------|
+| [keyd](https://github.com/rvaiya/keyd) + `/etc/keyd/macbook8.1.conf` | Swap Command↔Control system-wide (Wayland + TTY) |
+| GNOME `switch-applications` → Ctrl+Tab | Physical Command+Tab switches apps like macOS |
+
+| Physical key | After install |
+|--------------|---------------|
+| Command (⌘) | **Ctrl** (⌘C / ⌘V work in GUI apps) |
+| Control (⌃) | **Super** |
+| Option (⌥) | **Alt** (unchanged — keeps `us-mac` / `fr` special characters) |
+
+Backups: `/var/backups/macbook8.1-keyboard-<timestamp>/`. Does not change SPI, speakers, or display fixes.
+
+### Install
+
+```bash
+cd ultrathin_fix
+sudo bash install-keyboard.sh
+```
+
+No reboot required (`keyd reload`).
+
+### Notes
+
+- **GUI apps:** physical Command+C/V match macOS.
+- **Terminals:** physical Command still sends Ctrl, so Command+C is **interrupt** (SIGINT), not copy. Use **Ctrl+Shift+C/V** for copy/paste in the terminal (common Linux/Mac-on-Linux compromise).
+- If you use `caps:ctrl_modifier`, Caps Lock becomes Ctrl and then Super after the swap.
+
+### Revert
+
+```bash
+sudo bash revert-keyboard.sh
+```
+
+---
+
 ## Display remanence (ghost letters) — optional
 
 ### Warning
@@ -154,7 +201,9 @@ sudo bash revert-display.sh
 ```
 install.sh / revert.sh                     # SPI / s2idle
 install-speakers.sh / revert-speakers.sh   # CS4208 speakers (wraps upstream DKMS)
+install-keyboard.sh / revert-keyboard.sh   # macOS-like modifiers (keyd)
 install-display.sh / revert-display.sh     # remanence helpers (optional)
+keyd/macbook8.1.conf
 bin/applespi-boot-retry.sh
 bin/macbook-brightness-cap.sh
 bin/panel-clear.py
