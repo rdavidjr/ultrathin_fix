@@ -1,13 +1,17 @@
 [Unit]
 Description=Cap MacBook backlight to reduce IPS image retention
 Documentation=https://github.com/rdavidjr/ultrathin_fix
-After=multi-user.target
+After=multi-user.target graphical.target
 ConditionVirtualization=!container
 
 [Service]
 Type=oneshot
+# GNOME/gsd often restores the previous brightness after login; re-apply a few times.
 ExecStart=/usr/local/sbin/macbook-brightness-cap.sh
-RemainAfterExit=yes
+ExecStart=/bin/sleep 20
+ExecStart=/usr/local/sbin/macbook-brightness-cap.sh
+ExecStart=/bin/sleep 40
+ExecStart=/usr/local/sbin/macbook-brightness-cap.sh
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target graphical.target

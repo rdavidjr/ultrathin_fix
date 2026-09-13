@@ -94,7 +94,7 @@ Software cannot fully cure a worn panel. Mitigations reduce how strongly it show
 
 | Change | Purpose |
 |--------|---------|
-| Soft brightness cap (default **70%**) | udev + oneshot service caps backlight above the configured percent |
+| Soft brightness cap (default **70%**) | udev + oneshot service caps backlight (re-applies after login so GNOME cannot keep 100%) |
 | `panel-clear` | Manual fullscreen white (then short black) to clear retention temporarily |
 
 Backups: `/var/backups/macbook8.1-display-<timestamp>/`. Does **not** change GRUB or the SPI fix.
