@@ -1,0 +1,14 @@
+[Unit]
+Description=Retry Apple SPI keyboard/trackpad init on MacBook8,1
+Documentation=https://github.com/rdavidjr/ultrathin_fix
+After=multi-user.target
+ConditionPathExists=/sys/module/applespi
+ConditionVirtualization=!container
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/applespi-boot-retry.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
